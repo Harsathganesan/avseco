@@ -1,0 +1,64 @@
+export const formatDate = (dateInput) => {
+    if (!dateInput) return "N/A";
+    let date;
+    // If it's a Date object, use directly
+    if (dateInput instanceof Date) {
+        date = dateInput;
+    } else if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+        // YYYY-MM-DD: parse as LOCAL date (avoid UTC midnight shift)
+        const [y, m, d] = dateInput.split('-').map(Number);
+        date = new Date(y, m - 1, d);
+    } else if (typeof dateInput === 'string' && /^\d{1,2}-\d{1,2}-\d{4}$/.test(dateInput)) {
+        // DD-MM-YYYY: parse correctly
+        const [d, m, y] = dateInput.split('-').map(Number);
+        date = new Date(y, m - 1, d);
+    } else {
+        date = new Date(dateInput);
+    }
+    if (isNaN(date.getTime())) return String(dateInput);
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+};
+
+
+export const formatFullDate = (date) => {
+    if (!date) return "N/A";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return date;
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+};
+
+export const isWithinLast2Days = (dateString) => {
+    if (!dateString) return false;
+    
+    let date;
+    // Handle DD-MM-YYYY
+    if (typeof dateString === 'string' && dateString.includes('-')) {
+        const parts = dateString.split('-');
+        if (parts[0].length === 2) {
+            date = new Date(parts[2], parts[1] - 1, parts[0]);
+        } else {
+            date = new Date(dateString);
+        }
+    } else {
+        date = new Date(dateString);
+    }
+
+    if (isNaN(date.getTime())) return false;
+
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // End of today
+    
+    const expenseDate = new Date(date);
+    expenseDate.setHours(0, 0, 0, 0); // Start of expense day
+    
+    const diffTime = today - expenseDate;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    return diffDays <= 2;
+};

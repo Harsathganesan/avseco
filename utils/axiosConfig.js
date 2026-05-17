@@ -1,0 +1,54 @@
+import axios from 'axios';
+
+let apiBaseUrl = process.env.REACT_APP_API_URL;
+
+if (!apiBaseUrl) {
+  const hostname = window.location.hostname;
+  // If accessing via IP (like from a phone), use that IP for the API too
+  apiBaseUrl = hostname === 'localhost' || hostname === '127.0.0.1'
+    ? 'http://localhost:5555/api'
+    : `http://${hostname}:5555/api`;
+}
+
+const axiosInstance = axios.create({
+  baseURL: apiBaseUrl,
+  timeout: 30000, // 30 seconds
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add a request interceptor to include the JWT token in headers
+axiosInstance.interceptors.request.use(
+  (config) => {
+    const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+    if (userInfo && userInfo.token) {
+      config.headers.Authorization = `Bearer ${userInfo.token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add a response interceptor to handle errors globally
+axiosInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.code === 'ECONNABORTED') {
+      console.error('Request timed out');
+      error.message = 'The server took too long to respond. Please try again.';
+    } else if (!error.response) {
+      console.error('Network Error:', error);
+      error.message = 'Network error. Please check your internet connection or backend status.';
+    } else if (error.response.status === 401) {
+      // Handle unauthorized error
+      localStorage.removeItem('userInfo');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default axiosInstance;
