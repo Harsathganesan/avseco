@@ -1,0 +1,1376 @@
+/* AttendanceReport.css - Premium Designs for Attendance Reports */
+
+.attendance-report-page {
+    padding: 40px 60px; /* Enhanced page margins for luxury feel */
+    background-color: #f0f4f2;
+    min-height: 100vh;
+    font-family: 'Inter', -apple-system, sans-serif;
+}
+
+.dark .attendance-report-page {
+    background-color: #0a3028;
+}
+
+/* Global premium-header will handle these */
+.premium-header {
+    position: relative;
+    z-index: 110;
+}
+
+.report-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* ===== BUTTONS ===== */
+.back-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 24px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 40px;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.back-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.2);
+}
+
+.export-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.export-group .dropdown-trigger {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.08);
+    /* Sophisticated subtle background */
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffffff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 10px;
+    margin-right: 8px;
+}
+
+.export-group .range-trigger {
+    height: 44px;
+    border-radius: 40px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 24px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.export-group .range-trigger:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.export-group .range-trigger .material-symbols-outlined {
+    font-size: 20px;
+    transition: transform 0.3s ease;
+}
+
+.export-group .dropdown-trigger .material-symbols-outlined {
+    font-size: 20px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.export-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: #006A4E;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 10px rgba(0, 106, 78, 0.2);
+}
+
+.export-btn:hover {
+    background: #004d39;
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: 0 15px 30px -5px rgba(0, 106, 78, 0.3);
+}
+
+/* ===== FILTERS CARD ===== */
+.filters-card {
+    background: #ffffff;
+    padding: 24px 32px;
+    border-radius: 24px;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 48px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    position: relative;
+    z-index: 100;
+}
+
+.dark .filters-card {
+    background: #1c2e21;
+    border-color: #2a3a2e;
+}
+
+
+.filter-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.filter-label {
+    font-size: 11px;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.75);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+}
+
+/* Custom Dropdown System */
+.custom-dropdown {
+    position: relative;
+    display: inline-block;
+    z-index: 1000;
+    /* Ensure the open dropdown's container is higher than surrounding content */
+}
+
+.dropdown-trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 6px;
+}
+
+.dropdown-trigger:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+
+.dropdown-trigger .material-symbols-outlined {
+    font-size: 20px;
+    color: #94a3b8;
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: calc(100% + 4px); /* Reduced from +14px to be closer */
+    left: 0; /* Aligned to start */
+    right: auto;
+    width: auto;
+    min-width: 280px;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 20px;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05) !important;
+    z-index: 100000 !important;
+    overflow: hidden;
+    padding: 12px;
+    animation: dropDownSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transform-origin: top right;
+    backdrop-filter: none !important;
+}
+
+
+
+.dropdown-item {
+    padding: 14px 18px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #334155;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 12px;
+    text-align: left;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 4px;
+}
+
+.dropdown-item:last-child {
+    margin-bottom: 0;
+}
+
+.dropdown-item .material-symbols-outlined {
+    font-size: 22px;
+    color: #64748b;
+    transition: color 0.2s;
+}
+
+.dropdown-item:hover {
+    background: #f1f8f6;
+    color: #006A4E;
+}
+
+
+.dropdown-item:hover .material-symbols-outlined {
+    color: #006A4E;
+    transform: scale(1.1);
+}
+
+.dropdown-item.active {
+    background: #006A4E;
+    color: white;
+    font-weight: 700;
+}
+
+.dropdown-menu.scrollable {
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+/* Custom scrollbar for dropdown */
+.dropdown-menu.scrollable::-webkit-scrollbar {
+    width: 6px;
+}
+
+.dropdown-menu.scrollable::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+@keyframes dropDownSlide {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.custom-select-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.report-select {
+    appearance: none;
+    position: relative;
+    height: 46px;
+    /* Explicit height to match month nav */
+    padding: 0 40px 0 16px;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 17px;
+    font-weight: 700;
+    color: #0f172a;
+    cursor: pointer;
+    min-width: 140px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+}
+
+.report-select:hover {
+    border-color: #006A4E;
+    background: white;
+}
+
+.select-arrow {
+    position: absolute;
+    right: 12px;
+    color: #94a3b8;
+    pointer-events: none;
+    font-size: 20px;
+}
+
+.month-nav-group {
+    display: flex;
+    align-items: center;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 4px;
+    height: 46px;
+    /* Match Year dropdown height */
+    box-sizing: border-box;
+}
+
+.nav-arrow-btn {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border: none;
+    /* Removed border for cleaner integrated look */
+    border-radius: 8px;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    /* Soft shadow instead of border */
+}
+
+.nav-arrow-btn:hover {
+    color: #006A4E;
+    background: #ffffff;
+    transform: scale(1.1);
+}
+
+.month-display-select {
+    border: none;
+    background: transparent;
+    padding: 0 12px;
+    font-size: 17px;
+    font-weight: 700;
+    color: #0f172a;
+    cursor: pointer;
+    min-width: 120px;
+    text-align: center;
+    outline: none;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.month-display-select:hover {
+    color: #006A4E;
+}
+
+.month-arrow {
+    font-size: 18px;
+    color: #94a3b8;
+    transition: transform 0.2s;
+}
+
+.month-display-select:hover .month-arrow {
+    color: #006A4E;
+}
+
+/* ===== MATRIX TABLE ===== */
+.attendance-report-main-card {
+    background: white;
+    border-radius: 20px;
+    border: 1px solid #e2e8f0;
+    padding: 0;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+}
+
+.dark .attendance-report-main-card {
+    background: #1c2e21;
+    border-color: #2a3a2e;
+}
+
+.matrix-scroll-wrapper {
+    overflow-x: auto;
+    max-height: calc(100vh - 350px);
+}
+
+/* Professional Excel Style Table */
+.attendance-data-matrix {
+    border-collapse: collapse;
+    width: 100%;
+    background: white;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.attendance-data-matrix th, 
+.attendance-data-matrix td {
+    border: 1px solid #e2e8f0;
+    padding: 6px 4px; /* More compact Excel-like padding */
+    text-align: center;
+    font-size: 11px;
+    height: 28px;
+}
+
+.attendance-data-matrix td {
+    background-color: #ffffff; /* Default base background */
+}
+
+/* Specific Header Colors */
+.excel-header-green {
+    background-color: #006A4E !important; /* Brand Green */
+    color: #ffffff !important;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.excel-header-yellow {
+    background-color: #fef3c7 !important; /* Soft Amber */
+    color: #92400e !important;
+    font-weight: 700;
+    font-size: 11px;
+}
+
+.excel-header-summary {
+    background-color: #ccfbf1 !important; /* Soft Teal */
+    color: #0f766e !important;
+    font-weight: 700;
+    font-size: 10px;
+}
+
+.excel-cell-sno {
+    font-weight: 600;
+    color: #64748b;
+}
+
+.excel-cell-name {
+    text-align: left !important;
+    padding-left: 16px !important;
+    font-weight: 600;
+    color: #1e293b;
+    white-space: nowrap;
+}
+
+.emp-name-excel {
+    text-transform: capitalize;
+}
+
+.excel-data-cell {
+    color: #475569;
+}
+
+.sunday-col {
+    background-color: #fff1f2 !important;
+    color: #e11d48 !important;
+    font-weight: 700;
+    font-size: 10px;
+}
+
+.sunday-header {
+    background-color: #fef3c7 !important; 
+    color: #e11d48 !important;
+}
+
+.excel-stat-cell {
+    font-weight: 700;
+    color: #1e293b;
+    font-size: 13px;
+    background-color: rgba(204, 251, 241, 0.3) !important;
+}
+
+/* Maintain Sticky with Professional Styles */
+.excel-header-green.sticky-col-no,
+.excel-header-green.sticky-col {
+    z-index: 10;
+}
+
+.sticky-col-no.excel-cell-sno,
+.sticky-col.excel-cell-name {
+    background: white !important;
+    z-index: 5;
+}
+
+.attendance-data-matrix tr:nth-child(even) td {
+    background-color: #fafbfc;
+}
+
+/* Day specific status colors - Refined for maximum vibrance */
+.attendance-data-matrix td.status-p {
+    background-color: #22c55e !important;
+    color: #ffffff !important;
+    font-weight: 800;
+}
+
+.attendance-data-matrix td.status-a {
+    background-color: #ef4444 !important;
+    color: #ffffff !important;
+    font-weight: 800;
+}
+
+.attendance-data-matrix td.status-hd {
+    background-color: #ffedd5 !important;
+    color: #9a3412 !important;
+    font-weight: 800;
+}
+
+.attendance-data-matrix td.status-ws {
+    background-color: #facc15 !important;
+    color: #854d0e !important;
+    font-weight: 800;
+}
+
+.attendance-data-matrix td.status-sun {
+    background-color: #fff1f2 !important;
+    color: #e11d48 !important;
+    font-weight: 800;
+}
+
+/* Zebra striping override for status cells */
+.attendance-data-matrix tr:nth-child(even) td.status-p,
+.attendance-data-matrix tr:nth-child(even) td.status-a,
+.attendance-data-matrix tr:nth-child(even) td.status-hd,
+.attendance-data-matrix tr:nth-child(even) td.status-ws,
+.attendance-data-matrix tr:nth-child(even) td.status-sun {
+    opacity: 0.95;
+}
+
+.matrix-month-title {
+    background-color: #fcd34d;
+    padding: 4px 60px;
+    font-weight: 800;
+    font-size: 14px;
+    color: #000000;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+}
+
+.attendance-data-matrix th {
+    background: #f8fafc;
+    padding: 8px 4px;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: #64748b;
+    border-bottom: 2px solid #e2e8f0;
+    border-right: 1px solid #f1f5f9;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.attendance-data-matrix th.sticky-col-no,
+.attendance-data-matrix td.sticky-col-no {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 30;
+    background: white;
+    border-right: 1px solid #e2e8f0;
+    width: 40px;
+    min-width: 40px;
+    max-width: 40px;
+    text-align: center;
+}
+
+.attendance-data-matrix th.sticky-col,
+.attendance-data-matrix td.sticky-col {
+    position: sticky !important;
+    left: 40px !important;
+    z-index: 30;
+    background: white;
+    border-right: 2px solid #006A4E; /* Thicker primary color line */
+    text-align: left;
+    box-shadow: 4px 0 8px -4px rgba(0,0,0,0.1); /* Subtle shadow on scroll */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.attendance-data-matrix th.sticky-col-no,
+.attendance-data-matrix th.sticky-col {
+    z-index: 45; /* Highest z-index for sticky headers */
+}
+
+.attendance-data-matrix td {
+    padding: 6px 4px;
+    font-size: 11px;
+    border-bottom: 1px solid #f1f5f9;
+    border-right: 1px solid #f1f5f9;
+    text-align: center;
+}
+
+.emp-cell-info {
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+}
+
+.emp-name {
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 12px;
+}
+
+.emp-id {
+    font-size: 10px;
+    color: #64748b;
+}
+
+.status-cell {
+    font-weight: 800;
+    font-size: 11px;
+    transition: all 0.2s ease;
+}
+
+.attendance-cell-marker {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    margin: 0 auto;
+}
+
+.status-cell.present {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-cell.absent {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.status-cell.half {
+    background: #ffedd5;
+    color: #9a3412;
+}
+
+.status-cell.stoppage {
+    background: #fef9c3;
+    color: #854d0e;
+}
+
+.status-cell.sunday {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.stat-cell-val {
+    font-weight: 800;
+}
+
+.stat-cell-val.pres {
+    color: #006A4E;
+    background: #f0fdf4;
+}
+
+.stat-cell-val.abs {
+    color: #dc2626;
+    background: #fef2f2;
+}
+
+.report-filters-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 24px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    padding: 0 4px;
+}
+
+.filter-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.filter-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #4b5563;
+    text-transform: none;
+    letter-spacing: normal;
+    white-space: nowrap;
+}
+
+
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.legend-box {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    font-size: 10px;
+}
+
+.legend-box.present {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.legend-box.absent {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.legend-box.half {
+    background: #ffedd5;
+    color: #9a3412;
+}
+
+.legend-box.stoppage {
+    background: #fef9c3;
+    color: #854d0e;
+}
+
+.legend-box.sunday {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+/* ===== GREEN BANNER HEADER ===== */
+.ar-banner-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #006A4E;
+    border-radius: 24px;
+    padding: 24px 48px; /* Balanced reduction */
+    margin-bottom: 24px;
+    gap: 32px;
+    flex-wrap: wrap;
+    box-shadow: 0 10px 30px rgba(0, 106, 78, 0.15);
+    position: relative;
+    z-index: 200;
+}
+
+
+.ar-banner-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ar-banner-title {
+    font-size: 26px; /* Optimized size */
+    font-weight: 800;
+    color: #ffffff;
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.ar-banner-subtitle {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.75);
+    margin: 0;
+}
+
+.ar-export-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 32px;
+    border-radius: 50px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(4px);
+}
+
+.ar-export-btn:hover {
+    background: #ffffff;
+    color: #006A4E;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.ar-export-btn.yearly {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    box-shadow: none;
+    backdrop-filter: blur(10px);
+}
+
+.ar-export-btn.yearly:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+
+.ar-filter-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 20px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    color: #0f172a;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 100px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.ar-month-nav {
+    display: flex;
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 4px;
+    gap: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.month-display-select {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 16px;
+    font-weight: 700;
+    color: #0f172a;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    min-width: 120px;
+}
+
+.nav-arrow-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: #f1f5f9 !important;
+    border: none !important;
+    color: #64748b !important;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.nav-arrow-btn:hover {
+    background: #e2e8f0 !important;
+    color: #006A4E !important;
+}
+
+/* Status Legend Styling */
+.status-legend {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+    background: #ffffff;
+    padding: 24px 40px;
+    border-radius: 16px;
+    margin-bottom: 24px;
+    border: 1px solid #f1f5f9;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+    flex-wrap: wrap;
+}
+
+/* ===== MOBILE RESPONSIVE ===== */
+@media (max-width: 1024px) {
+    .attendance-report-page {
+        padding: 16px 20px;
+    }
+
+    .filters-card {
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+}
+
+@media (max-width: 768px) {
+    .attendance-report-page {
+        padding: 12px;
+        gap: 16px;
+    }
+
+    /* ── Banner: centered ── */
+    /* ── Header: Title separate from Buttons ── */
+    .ar-banner-header {
+        background: #006A4E;
+        padding: 24px 16px;
+        border-radius: 20px;
+        text-align: center;
+        flex-direction: column;
+        gap: 16px;
+        margin-bottom: 12px;
+        box-shadow: 0 10px 30px rgba(0, 106, 78, 0.15);
+    }
+
+    .ar-banner-left {
+        align-items: center;
+    }
+
+    .ar-banner-title {
+        font-size: 22px;
+        letter-spacing: -0.5px;
+    }
+
+    .ar-banner-subtitle {
+        font-size: 13px;
+        opacity: 0.9;
+    }
+
+    .ar-banner-actions {
+        width: 100%;
+        display: block;
+        /* Export button will be full width via inline style or here */
+        margin-top: 4px;
+    }
+
+    /* ── Filters card ── */
+    .filters-card {
+        flex-direction: row;
+        gap: 8px;
+        padding: 12px;
+        background: #ffffff;
+        border-radius: 16px;
+        margin-bottom: 20px;
+        border: 1px solid #e2e8f0;
+        align-items: stretch;
+    }
+
+    .filter-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 4px;
+        min-width: 0;
+    }
+
+    .filter-label {
+        font-size: 9px;
+        color: #94a3b8;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        margin-left: 2px;
+        text-transform: uppercase;
+        width: auto;
+    }
+
+    /* Year dropdown mobile */
+    .report-select {
+        height: 48px;
+        background: #f8fafc;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 10px;
+        color: #0f172a;
+        font-size: 15px;
+        font-weight: 700;
+        padding: 0 34px 0 12px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        position: relative;
+        min-width: 0;
+        width: 100%;
+    }
+
+    .report-select .select-ar.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px; /* Reduced from 12px to be closer */
+        transform: translateY(-50%);
+        font-size: 18px;
+        color: #94a3b8;
+        pointer-events: none;
+    }
+
+    /* Month nav group mobile */
+    .month-nav-group {
+        height: 48px;
+        background: #f8fafc;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 2px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .nav-arrow-btn {
+        width: 32px;
+        height: 32px;
+        background: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .month-display-select {
+        flex: 1;
+        font-size: 14px;
+        color: #0f172a;
+        padding: 0 4px;
+    }
+
+    /* ── Legend: Two columns ── */
+    .status-legend {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        padding: 16px;
+        border-radius: 16px;
+        margin-bottom: 12px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    }
+
+    .legend-item {
+        font-size: 11px;
+        padding: 10px 12px;
+        background: #f8fafc;
+        border-radius: 10px;
+        border: 1px solid #f1f5f9;
+        display: flex;
+        justify-content: flex-start;
+        width: 100%;
+    }
+
+    .legend-box {
+        width: 22px;
+        height: 22px;
+        font-size: 9px;
+        border-radius: 6px;
+    }
+
+    .status-legend::-webkit-scrollbar {
+        display: none;
+    }
+
+    .legend-item {
+        font-size: 11px;
+        padding: 10px 12px;
+        background: #f8fafc;
+        border-radius: 10px;
+        border: 1px solid #f1f5f9;
+        display: flex;
+        justify-content: flex-start;
+        width: 100%;
+    }
+
+    .legend-box {
+        width: 22px;
+        height: 22px;
+        font-size: 9px;
+        border-radius: 6px;
+    }
+
+    /* ── Heatmap Table Overview ── */
+    .attendance-report-main-card {
+        border-radius: 16px;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+    }
+
+    .matrix-month-title {
+        font-size: 14px;
+        font-weight: 800;
+        color: #006A4E;
+        padding: 12px;
+        background: #f0fdf4;
+        text-align: center;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .matrix-scroll-wrapper {
+        overflow-x: auto;
+        overflow-y: auto;
+        max-height: calc(100vh - 350px);
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .attendance-data-matrix th,
+    .attendance-data-matrix td {
+        padding: 4px 2px;
+        font-size: 10px;
+        min-width: 24px;
+        height: 24px;
+    }
+
+    .attendance-data-matrix th.sticky-col-no,
+    .attendance-data-matrix td.sticky-col-no {
+        min-width: 30px;
+        width: 30px;
+        left: 0 !important;
+        z-index: 30;
+        background: white;
+        position: sticky !important;
+    }
+
+    .attendance-data-matrix th.sticky-col,
+    .attendance-data-matrix td.sticky-col {
+        min-width: 180px; /* Increased further for full visibility of long names */
+        left: 30px !important;
+        z-index: 30;
+        background: white;
+        padding: 6px 14px;
+        text-align: left;
+        white-space: nowrap;
+        overflow: visible; /* Ensure nothing is hidden */
+        text-overflow: clip; /* Remove dots */
+        position: sticky !important;
+        border-right: 2px solid #006A4E;
+    }
+    
+    .attendance-data-matrix th.sticky-col-no,
+    .attendance-data-matrix th.sticky-col {
+        background: #f1f5f9 !important;
+        z-index: 40;
+    }
+
+    .emp-name {
+        font-size: 11px;
+        font-weight: 700;
+        display: block;
+        width: 100%;
+    }
+
+    .emp-id {
+        display: none;
+    }
+
+    /* Cells as small heatmap squares */
+    .status-cell {
+        padding: 2px !important;
+    }
+
+    .status-p { background: #dcfce7 !important; color: #166534; }
+    .status-a { background: #fee2e2 !important; color: #991b1b; }
+    .status-hd { background: #ffedd5 !important; color: #9a3412; }
+    .status-ws { background: #fef9c3 !important; color: #854d0e; }
+    .status-sun { background: #fef2f2 !important; color: #dc2626; }
+
+    .attendance-cell-marker {
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 900;
+        margin: 0 auto;
+    }
+
+    .status-cell.present .attendance-cell-marker {
+        background: transparent;
+        color: #166534;
+        /* Show P in green */
+        font-weight: 900;
+    }
+
+    .status-cell.present {
+        background: #dcfce7 !important;
+    }
+
+    .status-cell.absent {
+        background: #fee2e2 !important;
+    }
+
+    .status-cell.absent .attendance-cell-marker {
+        color: #991b1b;
+    }
+
+    .status-cell.half {
+        background: #ffedd5 !important;
+    }
+
+    .status-cell.half .attendance-cell-marker {
+        color: #9a3412;
+    }
+
+    .status-cell.stoppage {
+        background: #fef9c3 !important;
+    }
+
+    .status-cell.stoppage .attendance-cell-marker {
+        color: #854d0e;
+    }
+
+    .status-cell.sunday {
+        background: #fef2f2 !important;
+        border-left: 1px solid #fee2e2;
+    }
+
+    .status-cell.sunday .attendance-cell-marker {
+        color: #dc2626;
+    }
+
+    .stat-cell-val {
+        min-width: 32px;
+        font-weight: 900;
+        font-size: 11px;
+    }
+
+    /* Dropdowns */
+    .dropdown-menu {
+        min-width: 150px;
+        border-radius: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .attendance-report-page {
+        padding: 10px;
+    }
+
+    .ar-banner-header {
+        padding: 14px 12px;
+        border-radius: 14px;
+    }
+
+    .ar-banner-title {
+        font-size: 18px;
+    }
+
+    .filters-card {
+        padding: 12px 10px;
+        gap: 10px;
+    }
+
+    .filter-label {
+        width: 45px;
+        min-width: 45px;
+        font-size: 9px;
+    }
+
+    .attendance-data-matrix th.sticky-col-no,
+    .attendance-data-matrix td.sticky-col-no {
+        min-width: 25px;
+        width: 25px;
+        position: sticky !important;
+        left: 0 !important;
+        z-index: 30;
+    }
+
+    .attendance-data-matrix th.sticky-col,
+    .attendance-data-matrix td.sticky-col {
+        min-width: 150px; /* Increased to allow full names to be visible on Realme P3 and others */
+        left: 25px !important;
+        padding: 5px 10px;
+        position: sticky !important;
+        z-index: 30;
+        white-space: nowrap;
+        overflow: visible;
+        text-overflow: clip;
+    }
+
+    .attendance-cell-marker {
+        width: 18px;
+        height: 18px;
+        font-size: 8px;
+    }
+
+    .attendance-data-matrix th,
+    .attendance-data-matrix td {
+        min-width: 20px;
+        height: 20px;
+    }
+}
+
+/* Visibility Fixes */
+.attendance-cell-marker {
+    color: inherit !important;
+    font-weight: 900 !important;
+    font-size: 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Standardized Header Patterns */
+@media (max-width: 768px) {
+    .desktop-only-export {
+        display: none !important;
+    }
+
+    .report-filters-row {
+        gap: 10px;
+        margin-bottom: 20px;
+        justify-content: flex-start;
+    }
+
+    .filter-item {
+        gap: 6px;
+    }
+
+    .filter-label {
+        font-size: 11px;
+    }
+
+    .report-select, .month-nav-group {
+        height: 44px;
+        font-size: 15px;
+    }
+
+    .nav-arrow-btn {
+        width: 32px;
+        height: 32px;
+    }
+
+    .month-display-select {
+        min-width: 90px;
+        font-size: 15px;
+    }
+
+    .matrix-scroll-wrapper {
+        max-height: calc(100vh - 300px);
+    }
+}

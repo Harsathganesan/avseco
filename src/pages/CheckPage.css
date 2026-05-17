@@ -1,0 +1,257 @@
+.check-page-container {
+    padding: 2rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 80px); /* Fill screen */
+    background-color: #f8fafc;
+}
+
+.check-card {
+    background: white;
+    padding: 3.5rem 2.5rem;
+    border-radius: 24px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.05);
+    text-align: center;
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2.5rem;
+    margin: auto; /* Absolute center */
+    border: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+.check-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 1rem;
+}
+
+.status-indicator-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+}
+
+.status-animation {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    position: relative;
+}
+
+.icon-large {
+    font-size: 5rem !important;
+    /* Large icon */
+    margin-bottom: 1rem;
+}
+
+/* Connected State - Green */
+.connected .icon-large {
+    color: #22c55e;
+    /* Green */
+}
+
+.connected h2 {
+    color: #15803d;
+    margin: 0;
+}
+
+.status-text {
+    color: #64748b;
+}
+
+/* Error State - Red */
+.error .icon-large {
+    color: #ef4444;
+    /* Red */
+}
+
+.error h2 {
+    color: #b91c1c;
+    margin: 0;
+}
+
+.error-text {
+    color: #ef4444;
+    background: #fef2f2;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    max-width: 100%;
+}
+
+/* Checking State */
+.checking {
+    color: #3b82f6;
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+    font-size: 3rem !important;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Pulse Animation for Rings */
+.pulse-ring {
+    position: absolute;
+    top: 50%;
+    /* Center relative to icon */
+    left: 50%;
+    transform: translate(-50%, -50%);
+    /* Center strictly */
+    width: 100px;
+    /* Base size */
+    height: 100px;
+    border-radius: 50%;
+    opacity: 0;
+    z-index: -1;
+    margin-top: -2.5rem;
+    /* Adjust based on icon position and size */
+}
+
+.green.pulse-ring {
+    border: 3px solid #22c55e;
+    animation: pulse-green 2s infinite;
+}
+
+.red.pulse-ring {
+    border: 3px solid #ef4444;
+    animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-green {
+    0% {
+        width: 60px;
+        height: 60px;
+        opacity: 0.8;
+    }
+
+    100% {
+        width: 140px;
+        height: 140px;
+        opacity: 0;
+    }
+}
+
+@keyframes pulse-red {
+    0% {
+        width: 60px;
+        height: 60px;
+        opacity: 0.8;
+    }
+
+    100% {
+        width: 140px;
+        height: 140px;
+        opacity: 0;
+    }
+}
+
+.retry-btn {
+    margin-top: 1rem;
+    padding: 0.75rem 1.5rem;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.retry-btn:hover {
+    background: #dc2626;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.last-checked {
+    color: #94a3b8;
+    /* Muted text */
+    font-size: 0.8rem;
+    margin-top: auto;
+}
+
+.status-details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    width: 100%;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid #f1f5f9;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.detail-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.detail-value {
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+.detail-value.success {
+    color: #16a34a;
+}
+
+.detail-value.error {
+    color: #dc2626;
+}
+
+.check-subtitle {
+    font-size: 0.95rem;
+    color: #64748b;
+    margin-bottom: 0.5rem;
+}
+
+.last-checked {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: #94a3b8;
+    font-size: 0.85rem;
+    margin-top: 1rem;
+}
+
+.last-checked span {
+    font-size: 1.1rem;
+}
+
+@media (max-width: 480px) {
+    .status-details-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+}

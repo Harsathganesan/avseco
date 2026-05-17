@@ -1,0 +1,1011 @@
+import React, { useState, useEffect } from "react";
+import "./ProductList.css";
+import { useAppContext } from "../../context/AppContext.js";
+
+// Removed image imports as per user request
+
+
+const DEFAULT_SIZES = ["4-inch", "6-inch", "8-inch", "10-inch", "12-inch"];
+
+const ProductList = () => {
+  const { products, fetchData, addProduct, updateProduct, deleteProduct } = useAppContext();
+  // Simplified states - removed unused filters
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showGroupDeleteModal, setShowGroupDeleteModal] = useState(false);
+  const [groupToDelete, setGroupToDelete] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [variantToDelete, setVariantToDelete] = useState(null);
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Form state for add/edit
+  const [formData, setFormData] = useState({
+    name: "",
+    hsn: "",
+    category: "Plates",
+  });
+
+  const [expandedGroup, setExpandedGroup] = useState(null);
+
+  const [variants, setVariants] = useState([]);
+
+  // Add Product
+  const handleAddProduct = React.useCallback(() => {
+    setFormData({
+      name: "",
+      hsn: "",
+      category: "Plates",
+    });
+    setVariants([{
+      size: "",
+      cost: "",
+      sell: "",
+      hsn: "",
+      checked: true,
+      isNew: true
+    }]);
+    setShowAddModal(true);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Trigger Shift + N or Shift + S to add product, ignore if in an input/textarea
+      const isInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT';
+      if (e.shiftKey && (e.key.toLowerCase() === 'n' || e.key.toLowerCase() === 's') && !isInput) {
+        e.preventDefault();
+        handleAddProduct();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleAddProduct]);
+
+  const fetchProducts = React.useCallback(async () => {
+    try {
+      await fetchData();
+    } catch (err) {
+      console.error("Error fetching products:", err);
+      setFeedbackMessage("Error connecting to server");
+    }
+  }, [fetchData]);
+
+  const confirmAddProduct = async () => {
+    if (!formData.name.trim()) {
+      setFeedbackMessage("Please enter product name");
+      setTimeout(() => setFeedbackMessage(""), 3000);
+      return;
+    }
+
+    const activeVariants = variants.filter(v => v.checked && v.size.trim());
+    if (activeVariants.length === 0) {
+      setFeedbackMessage("Please select at least one size");
+      setTimeout(() => setFeedbackMessage(""), 3000);
+      return;
+    }
+
+    if (productGroups[formData.name.trim()]) {
+      setFeedbackMessage(`Product group "${formData.name.trim()}" already exists!`);
+      setTimeout(() => setFeedbackMessage(""), 4000);
+      return;
+    }
+
+
+    try {
+      for (const v of activeVariants) {
+        const cost = parseFloat(v.cost) || 0;
+        const sell = parseFloat(v.sell) || 0;
+
+        await addProduct({
+          name: formData.name.trim(),
+          sku: v.hsn ? `${v.hsn.trim()}-${v.size.replace(/\s+/g, '-')}` : `${formData.hsn.trim()}-${v.size.replace(/\s+/g, '-')}`,
+          hsnCode: v.hsn ? v.hsn.trim() : formData.hsn.trim(),
+          size: v.size,
+          category: "Plates",
+          costPrice: cost,
+          sellPrice: sell,
+          margin: sell > 0 ? ((sell - cost) / sell * 100).toFixed(1) + "%" : "0.0%",
+        });
+      }
+
+      await fetchProducts();
+      setShowAddModal(false);
+      setFeedbackMessage(`${activeVariants.length} sizes added successfully`);
+    } catch (err) {
+      console.error("Error adding products:", err);
+      setFeedbackMessage(`Error: ${err.response?.data?.message || err.message}`);
+    }
+    setTimeout(() => setFeedbackMessage(""), 3000);
+  };
+
+  // Edit Product
+  const handleEditProduct = (name) => {
+    // On mobile, we toggle expansion instead of opening modal
+    if (window.innerWidth <= 768) {
+      setExpandedGroup(prev => prev === name ? null : name);
+      return;
+    }
+
+    const group = productGroups[name] || [];
+    if (group.length === 0) return;
+
+    setFormData({
+      name: name,
+      hsn: group[0]?.sku || "",
+      category: group[0]?.category || "Plates",
+    });
+
+    const variantsFromDefault = DEFAULT_SIZES.map(s => {
+      const match = group.find(v => v.size === s);
+      return match ?
+        { ...match, checked: true, cost: match.costPrice, sell: match.sellPrice, hsn: match.hsnCode || match.sku, isExisting: true } :
+        { size: s, cost: "", sell: "", hsn: group[0]?.hsnCode || group[0]?.sku || "", checked: false, isNew: true };
+    });
+
+    const customVariants = group
+      .filter(v => !DEFAULT_SIZES.includes(v.size))
+      .map(v => ({ ...v, checked: true, cost: v.costPrice, sell: v.sellPrice, hsn: v.sku, isExisting: true }));
+
+    setVariants([...variantsFromDefault, ...customVariants]);
+    setShowEditModal(true);
+  };
+
+  const confirmEditProduct = async () => {
+
+    try {
+      for (const v of variants) {
+        if (v.checked && v.isExisting) {
+          // Update existing
+          const cost = parseFloat(v.cost) || 0;
+          const sell = parseFloat(v.sell) || 0;
+          await updateProduct(v._id || v.id, {
+            ...v,
+            sku: v.hsn ? v.hsn.trim() : formData.hsn.trim(),
+            hsnCode: v.hsn ? v.hsn.trim() : formData.hsn.trim(),
+            costPrice: cost,
+            sellPrice: sell,
+            margin: sell > 0 ? ((sell - cost) / sell * 100).toFixed(1) + "%" : "0.0%",
+          });
+        } else if (v.checked && v.isNew) {
+          const cost = parseFloat(v.cost) || 0;
+          const sell = parseFloat(v.sell) || 0;
+
+          await addProduct({
+            name: formData.name.trim(),
+            sku: v.hsn ? `${v.hsn.trim()}-${v.size.replace(/\s+/g, '-')}` : `${formData.hsn.trim()}-${v.size.replace(/\s+/g, '-')}`,
+            hsnCode: v.hsn ? v.hsn.trim() : formData.hsn.trim(),
+            size: v.size,
+            category: "Plates",
+            costPrice: cost,
+            sellPrice: sell,
+            margin: sell > 0 ? ((sell - cost) / sell * 100).toFixed(1) + "%" : "0.0%",
+          });
+        }
+        // If unchecked and existing, we could delete it, but user didn't explicitly ask for deletion here.
+        // Usually better to just leave it or keep it as is.
+      }
+
+      await fetchProducts();
+      setShowEditModal(false);
+      setFeedbackMessage("Product updated successfully");
+    } catch (err) {
+      console.error("Error updating variants:", err);
+      setFeedbackMessage("Error updating products");
+    }
+    setTimeout(() => setFeedbackMessage(""), 3000);
+  };
+
+  const handleVariantChange = (index, field, value) => {
+    const newVariants = [...variants];
+    newVariants[index][field] = value;
+    setVariants(newVariants);
+  };
+
+  const handleIndividualDelete = (variantId, index, size) => {
+    if (!variantId) return;
+    setVariantToDelete({ id: variantId, index, size });
+  };
+
+  const confirmVariantDelete = async () => {
+    if (!variantToDelete) return;
+    const { id, index } = variantToDelete;
+    try {
+      await deleteProduct(id);
+      const newVariants = [...variants];
+      newVariants.splice(index, 1);
+      setVariants(newVariants);
+      setVariantToDelete(null);
+      setFeedbackMessage("Size variant deleted");
+      setTimeout(() => setFeedbackMessage(""), 3000);
+    } catch (err) {
+      console.error("Error deleting variant:", err);
+      setFeedbackMessage("Failed to delete variant");
+    }
+  };
+
+  const handleAddCustomSize = () => {
+    setVariants([...variants, { size: "", hsn: "", cost: "", sell: "", checked: true, isNew: true }]);
+  };
+
+
+  const confirmDeleteProduct = async () => {
+    if (!selectedProduct) return;
+
+    try {
+      await deleteProduct(selectedProduct._id);
+      // await fetchProducts(); // context update is enough now
+      setShowDeleteModal(false);
+      setSelectedProduct(null);
+      setFeedbackMessage("Product deleted successfully");
+    } catch (err) {
+      console.error("Error deleting product:", err);
+      setFeedbackMessage("Error deleting product");
+    }
+
+    setTimeout(() => setFeedbackMessage(""), 3000);
+  };
+
+  const confirmGroupDelete = async () => {
+    if (!groupToDelete) return;
+
+    try {
+      const variants = productGroups[groupToDelete] || [];
+      await Promise.all(variants.map(v => deleteProduct(v._id)));
+      // await fetchProducts(); // context update is enough now
+      setShowGroupDeleteModal(false);
+
+
+      setGroupToDelete(null);
+      setFeedbackMessage(`Product group deleted`);
+    } catch (err) {
+      console.error("Error deleting group:", err);
+      setFeedbackMessage("Error deleting product group");
+    }
+
+    setTimeout(() => setFeedbackMessage(""), 3000);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
+  };
+
+  const handleModalKeyDown = (e, type) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (type === 'add') {
+        confirmAddProduct();
+      } else {
+        confirmEditProduct();
+      }
+    }
+  };
+
+  // Get product abbreviation (first word)
+  const getAbbr = (name) => {
+    return name ? name.split(" ")[0] : "Product";
+  };
+
+  // Define stats and grouping inside render to stay fresh
+  const productGroups = products.reduce((acc, product) => {
+    const name = product.name || "Unknown Product";
+    if (!acc[name]) {
+      acc[name] = [];
+    }
+    acc[name].push(product);
+    return acc;
+  }, {});
+
+  const uniqueProductNames = Object.keys(productGroups).sort();
+
+  const stats = {
+    totalProducts: uniqueProductNames.length,
+    totalVariants: products.length
+  };
+
+  return (
+    <div className="product-list-container">
+      {/* Feedback Toast */}
+      {feedbackMessage && (
+        <div className="feedback-toast">
+          <span className="material-symbols-outlined">
+            {feedbackMessage.includes("deleted") ? "delete" :
+              feedbackMessage.includes("updated") ? "edit" :
+                feedbackMessage.includes("added") ? "add" : "check_circle"}
+          </span>
+          <span>{feedbackMessage}</span>
+        </div>
+      )}
+
+      {/* ===== PREMIUM ANALYTICS HEADER ===== */}
+      <div className="page-header premium-header">
+        <div>
+          <h1 className="page-title">Products List</h1>
+        </div>
+
+        <div className="header-actions">
+          <button className="btn-transfer-premium" onClick={handleAddProduct}>
+            <span className="material-symbols-outlined">add</span>
+            <span className="btn-text">Add Product</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ===== STATS CARDS ===== */}
+      <div className="product-stats">
+        <div className="stat-card centered-stat">
+          <div className="stat-icon blue">
+            <span className="material-symbols-outlined">inventory</span>
+          </div>
+          <div className="stat-info">
+            <span className="stat-label">Total Products</span>
+            <span className="stat-value">{stats.totalProducts}</span>
+          </div>
+        </div>
+        <div className="stat-card centered-stat">
+          <div className="stat-icon green">
+            <span className="material-symbols-outlined">category</span>
+          </div>
+          <div className="stat-info">
+            <span className="stat-label">Total Sizes</span>
+            <span className="stat-value">{stats.totalVariants}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ===== GRID VIEW ===== */}
+      <div className="product-grid">
+        {uniqueProductNames.length > 0 ? (
+          uniqueProductNames.map((name) => (
+            <div
+              key={name}
+              className={`product-card ${expandedGroup === name ? 'mobile-expanded' : ''}`}
+              onClick={() => handleEditProduct(name)}
+              style={{ cursor: "pointer" }}
+            >
+              <div className="product-card-text-container">
+                <span className="product-card-text-badge">{getAbbr(name)}</span>
+              </div>
+
+              <div className="product-card-content">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <h3 className="product-card-title">{name}</h3>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <div className="mobile-hidden" style={{ textAlign: 'right' }}>
+                      <span className="product-card-text-badge" style={{ padding: '2px 8px', fontSize: '10px', display: 'block', marginBottom: '4px' }}>{productGroups[name].length} Sizes</span>
+                    </div>
+                    <button
+                      className="action-btn delete"
+                      style={{ padding: '4px', height: '32px', width: '32px' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setGroupToDelete(name);
+                        setShowGroupDeleteModal(true);
+                      }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>delete</span>
+                    </button>
+                    <div className="desktop-hidden">
+                      <span className="material-symbols-outlined expand-chevron" style={{
+                        transform: expandedGroup === name ? 'rotate(180deg)' : 'rotate(0)',
+                        transition: 'transform 0.3s ease'
+                      }}>
+                        expand_more
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Mobile Expanded Details */}
+                {expandedGroup === name && (
+                  <div className="mobile-product-details" onClick={(e) => e.stopPropagation()}>
+                    <div className="details-header">
+                      <span>{productGroups[name].length} Sizes Available</span>
+                      <button className="edit-btn-mini" onClick={() => {
+                        // Trigger desktop edit logic even on mobile if they click this button
+                        const group = productGroups[name];
+                        setFormData({
+                          name: name,
+                          hsn: group[0]?.sku || "",
+                          category: group[0]?.category || "Plates",
+                        });
+                        const variantsFromDefault = DEFAULT_SIZES.map(s => {
+                          const match = group.find(v => v.size === s);
+                          return match ?
+                            { ...match, checked: true, cost: match.costPrice, sell: match.sellPrice, hsn: match.hsnCode || match.sku, isExisting: true } :
+                            { size: s, cost: "", sell: "", hsn: group[0]?.hsnCode || group[0]?.sku || "", checked: false, isNew: true };
+                        });
+                        const customVariants = group
+                          .filter(v => !DEFAULT_SIZES.includes(v.size))
+                          .map(v => ({ ...v, checked: true, cost: v.costPrice, sell: v.sellPrice, hsn: v.sku, isExisting: true }));
+                        setVariants([...variantsFromDefault, ...customVariants]);
+                        setShowEditModal(true);
+                      }}>
+                        <span className="material-symbols-outlined">edit</span>
+                        Edit All
+                      </button>
+                    </div>
+                    <div className="mobile-variants-stack">
+                      {productGroups[name].sort((a, b) => (parseInt(a.size) || 0) - (parseInt(b.size) || 0)).map((v, vIdx) => (
+                        <div key={v._id || vIdx} className="mobile-variant-item">
+                          <div className="v-name">{v.size}</div>
+                          <div className="v-prices">
+                            <div className="v-price-chip cost">₹{v.costPrice} <small>Cost</small></div>
+                            <div className="v-price-chip sell">₹{v.sellPrice} <small>Sell</small></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="empty-state-grid">
+            <span className="material-symbols-outlined empty-icon">category</span>
+            <h4>No products found</h4>
+            <button className="primary-btn" onClick={handleAddProduct}>
+              Add Product
+            </button>
+          </div>
+        )}
+      </div>
+
+
+      {/* ===== MODALS ===== */}
+      {/* Add Product Modal */}
+      {showAddModal && (
+        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+          <div className="modal-content large" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Add New Product</h3>
+              <button className="modal-close" onClick={() => setShowAddModal(false)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="modal-row centered-row">
+                <div className="modal-form-group inline-group" style={{ flex: 1 }}>
+                  <label className="inline-label">Product Name *</label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    onKeyDown={(e) => handleModalKeyDown(e, 'add')}
+                    placeholder="Enter product name"
+                    className="modal-input inline-input"
+                  />
+                </div>
+              </div>
+
+              <div className="variants-header">
+                <h4>Manage Sizes & Pricing</h4>
+                <p>Tick the sizes you want to add and enter their prices</p>
+              </div>
+
+              <div className="variants-list-container">
+                {!isMobile ? (
+                  <div className="variants-list">
+                    <table className="variant-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: '40px' }}>Tick</th>
+                          <th>Size</th>
+                          <th>HSN</th>
+                          <th>Cost (₹)</th>
+                          <th>Sell (₹)</th>
+                          <th style={{ width: '40px' }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {variants.map((v, idx) => (
+                          <tr key={idx} className={v.checked ? "active-row" : "inactive-row"}>
+                            <td>
+                              <input
+                                type="checkbox"
+                                checked={v.checked}
+                                onChange={(e) => handleVariantChange(idx, 'checked', e.target.checked)}
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                value={v.size}
+                                onChange={(e) => handleVariantChange(idx, 'size', e.target.value)}
+                                onKeyDown={(e) => handleModalKeyDown(e, 'add')}
+                                placeholder="Size"
+                                className="table-input"
+                                style={{ fontWeight: 700 }}
+                              />
+                            </td>
+                            <td>
+                              {v.checked && (
+                                <input
+                                  type="text"
+                                  value={v.hsn || ""}
+                                  onChange={(e) => handleVariantChange(idx, 'hsn', e.target.value)}
+                                  onKeyDown={(e) => handleModalKeyDown(e, 'edit')}
+                                  placeholder="HSN"
+                                  className="table-input"
+                                  style={{ fontSize: '12px' }}
+                                />
+                              )}
+                            </td>
+                            <td>
+                              {v.checked && (
+                                <input
+                                  type="number"
+                                  value={v.cost}
+                                  onChange={(e) => handleVariantChange(idx, 'cost', e.target.value)}
+                                  onKeyDown={(e) => handleModalKeyDown(e, 'add')}
+                                  placeholder="0"
+                                  className="table-input"
+                                />
+                              )}
+                            </td>
+                            <td>
+                              {v.checked && (
+                                <input
+                                  type="number"
+                                  value={v.sell}
+                                  onChange={(e) => handleVariantChange(idx, 'sell', e.target.value)}
+                                  onKeyDown={(e) => handleModalKeyDown(e, 'add')}
+                                  placeholder="0"
+                                  className="table-input"
+                                />
+                              )}
+                            </td>
+                            <td>
+                              <button
+                                className="action-btn delete small"
+                                onClick={() => {
+                                  const next = [...variants];
+                                  next.splice(idx, 1);
+                                  setVariants(next);
+                                }}
+                                title="Remove size"
+                              >
+                                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>close</span>
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                        <tr>
+                          <td colSpan="6" style={{ textAlign: 'center', padding: '12px' }}>
+                            <button className="add-row-btn" onClick={handleAddCustomSize}>
+                              <span className="material-symbols-outlined">add</span>
+                              Add Another Size
+                            </button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  /* Mobile Variant Boxes */
+                  <div className="mobile-variants-container">
+                    {variants.map((v, idx) => (
+                      <div key={idx} className="mobile-variant-card">
+                        <div className="mobile-variant-header">
+                          <div className="mobile-checkbox-group">
+                            <input
+                              type="checkbox"
+                              checked={v.checked}
+                              onChange={(e) => handleVariantChange(idx, 'checked', e.target.checked)}
+                            />
+                            <span>Include Size</span>
+                          </div>
+                          <button className="mobile-delete-btn" onClick={() => {
+                            const next = [...variants];
+                            next.splice(idx, 1);
+                            setVariants(next);
+                          }}>
+                            <span className="material-symbols-outlined">delete</span>
+                          </button>
+                        </div>
+                        
+                        <div className="mobile-card-inputs">
+                          <div className="mobile-input-group">
+                            <label>Size</label>
+                            <input
+                              type="text"
+                              value={v.size}
+                              onChange={(e) => handleVariantChange(idx, 'size', e.target.value)}
+                              placeholder="e.g. 14-inch"
+                            />
+                          </div>
+                          <div className="mobile-input-group">
+                            <label>HSN Code</label>
+                            <input
+                              type="text"
+                              value={v.hsn || ""}
+                              onChange={(e) => handleVariantChange(idx, 'hsn', e.target.value)}
+                              placeholder="HSN"
+                            />
+                          </div>
+                          <div className="mobile-price-row">
+                            <div className="mobile-input-group">
+                              <label>Cost (₹)</label>
+                              <input
+                                type="number"
+                                value={v.cost}
+                                onChange={(e) => handleVariantChange(idx, 'cost', e.target.value)}
+                                placeholder="0"
+                              />
+                            </div>
+                            <div className="mobile-input-group">
+                              <label>Sell (₹)</label>
+                              <input
+                                type="number"
+                                value={v.sell}
+                                onChange={(e) => handleVariantChange(idx, 'sell', e.target.value)}
+                                placeholder="0"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <button className="mobile-add-row-btn" onClick={handleAddCustomSize}>
+                      <span className="material-symbols-outlined">add</span>
+                      Add Another Size
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="modal-cancel" onClick={() => setShowAddModal(false)}>Cancel</button>
+              <button className="modal-confirm" onClick={confirmAddProduct}>Add Product</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Product Modal */}
+      {showEditModal && (
+        <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
+          <div className="modal-content large" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Edit Product: {formData.name}</h3>
+              <button className="modal-close" onClick={() => setShowEditModal(false)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="modal-row centered-row">
+                <div className="modal-form-group inline-group" style={{ flex: 1 }}>
+                  <label className="inline-label">Product Name</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    disabled
+                    className="modal-input disabled inline-input"
+                  />
+                </div>
+              </div>
+
+              <div className="variants-header">
+                <h4>Manage Sizes & Pricing</h4>
+                <p>Update prices for existing sizes or tick new ones to add them</p>
+              </div>
+
+              <div className="variants-list-container">
+                {!isMobile ? (
+                  <div className="variants-list">
+                    <table className="variant-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: '40px' }}>Tick</th>
+                          <th>Size</th>
+                          <th>HSN</th>
+                          <th>Cost (₹)</th>
+                          <th>Sell (₹)</th>
+                          <th style={{ width: '40px' }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {variants.map((v, idx) => (
+                          <tr key={idx} className={v.checked ? "active-row" : "inactive-row"}>
+                            <td>
+                              <input
+                                type="checkbox"
+                                checked={v.checked}
+                                onChange={(e) => handleVariantChange(idx, 'checked', e.target.checked)}
+                                disabled={v.isExisting}
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                value={v.size}
+                                onChange={(e) => handleVariantChange(idx, 'size', e.target.value)}
+                                onKeyDown={(e) => handleModalKeyDown(e, 'edit')}
+                                placeholder="Size"
+                                className="table-input"
+                                style={{ fontWeight: 700 }}
+                                disabled={v.isExisting}
+                              />
+                            </td>
+                            <td>
+                              {v.checked && (
+                                <input
+                                  type="text"
+                                  value={v.hsn || ""}
+                                  onChange={(e) => handleVariantChange(idx, 'hsn', e.target.value)}
+                                  onKeyDown={(e) => handleModalKeyDown(e, 'edit')}
+                                  placeholder="HSN"
+                                  className="table-input"
+                                  style={{ fontSize: '12px' }}
+                                />
+                              )}
+                            </td>
+                            <td>
+                              {v.checked && (
+                                <input
+                                  type="number"
+                                  value={v.cost}
+                                  onChange={(e) => handleVariantChange(idx, 'cost', e.target.value)}
+                                  onKeyDown={(e) => handleModalKeyDown(e, 'edit')}
+                                  placeholder="0"
+                                  className="table-input"
+                                />
+                              )}
+                            </td>
+                            <td>
+                              {v.checked && (
+                                <input
+                                  type="number"
+                                  value={v.sell}
+                                  onChange={(e) => handleVariantChange(idx, 'sell', e.target.value)}
+                                  onKeyDown={(e) => handleModalKeyDown(e, 'edit')}
+                                  placeholder="0"
+                                  className="table-input"
+                                />
+                              )}
+                            </td>
+                            <td>
+                              {v.isExisting ? (
+                                <button
+                                  className="action-btn delete small"
+                                  onClick={() => handleIndividualDelete(v._id || v.id, idx, v.size)}
+                                  title="Delete this size"
+                                >
+                                  <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>delete</span>
+                                </button>
+                              ) : (
+                                <button
+                                  className="action-btn delete small"
+                                  onClick={() => {
+                                    const next = [...variants];
+                                    next.splice(idx, 1);
+                                    setVariants(next);
+                                  }}
+                                  title="Remove new size"
+                                >
+                                  <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>close</span>
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                        <tr>
+                          <td colSpan="6" style={{ textAlign: 'center', padding: '12px' }}>
+                            <button className="add-row-btn" onClick={handleAddCustomSize}>
+                              <span className="material-symbols-outlined">add</span>
+                              Add Another Size
+                            </button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  /* Mobile Variant Boxes */
+                  <div className="mobile-variants-container">
+                    {variants.map((v, idx) => (
+                      <div key={idx} className="mobile-variant-card">
+                        <div className="mobile-variant-header">
+                          <div className="mobile-checkbox-group">
+                            <input
+                              type="checkbox"
+                              checked={v.checked}
+                              onChange={(e) => handleVariantChange(idx, 'checked', e.target.checked)}
+                              disabled={v.isExisting}
+                            />
+                            <span>{v.isExisting ? "Existing Size" : "New Size"}</span>
+                          </div>
+                          {v.isExisting ? (
+                            <button className="mobile-delete-btn" onClick={() => handleIndividualDelete(v._id || v.id, idx, v.size)}>
+                              <span className="material-symbols-outlined">delete</span>
+                            </button>
+                          ) : (
+                            <button className="mobile-delete-btn" onClick={() => {
+                              const next = [...variants];
+                              next.splice(idx, 1);
+                              setVariants(next);
+                            }}>
+                              <span className="material-symbols-outlined">close</span>
+                            </button>
+                          )}
+                        </div>
+                        
+                        <div className="mobile-card-inputs">
+                          <div className="mobile-input-group">
+                            <label>Size</label>
+                            <input
+                              type="text"
+                              value={v.size}
+                              onChange={(e) => handleVariantChange(idx, 'size', e.target.value)}
+                              placeholder="e.g. 14-inch"
+                              disabled={v.isExisting}
+                            />
+                          </div>
+                          <div className="mobile-input-group">
+                            <label>HSN Code</label>
+                            <input
+                              type="text"
+                              value={v.hsn || ""}
+                              onChange={(e) => handleVariantChange(idx, 'hsn', e.target.value)}
+                              placeholder="HSN"
+                            />
+                          </div>
+                          <div className="mobile-price-row">
+                            <div className="mobile-input-group">
+                              <label>Cost (₹)</label>
+                              <input
+                                type="number"
+                                value={v.cost}
+                                onChange={(e) => handleVariantChange(idx, 'cost', e.target.value)}
+                                placeholder="0"
+                              />
+                            </div>
+                            <div className="mobile-input-group">
+                              <label>Sell (₹)</label>
+                              <input
+                                type="number"
+                                value={v.sell}
+                                onChange={(e) => handleVariantChange(idx, 'sell', e.target.value)}
+                                placeholder="0"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <button className="mobile-add-row-btn" onClick={handleAddCustomSize}>
+                      <span className="material-symbols-outlined">add</span>
+                      Add Another Size
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="modal-cancel" onClick={() => setShowEditModal(false)}>Cancel</button>
+              <button className="modal-confirm" onClick={confirmEditProduct}>Save Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && selectedProduct && (
+        <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Delete Product</h3>
+              <button className="modal-close" onClick={() => setShowDeleteModal(false)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="modal-icon warning">
+                <span className="material-symbols-outlined">warning</span>
+              </div>
+              <p className="modal-title">Are you sure?</p>
+              <p className="modal-desc">
+                You are about to delete <strong>{selectedProduct.name}</strong> from
+                your product catalog. This action cannot be undone.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button
+                className="modal-cancel"
+                onClick={() => setShowDeleteModal(false)}
+              >
+                Cancel
+              </button>
+              <button className="modal-confirm delete" onClick={confirmDeleteProduct}>
+                Delete Product
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Group Confirmation Modal */}
+      {showGroupDeleteModal && groupToDelete && (
+        <div className="modal-overlay" onClick={() => setShowGroupDeleteModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Delete Product Group</h3>
+              <button className="modal-close" onClick={() => setShowGroupDeleteModal(false)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="modal-icon warning">
+                <span className="material-symbols-outlined">warning</span>
+              </div>
+              <p className="modal-title">Are you sure?</p>
+              <p className="modal-desc">
+                You are about to delete <strong>all sizes</strong> of <strong>{groupToDelete}</strong>.
+                This action cannot be undone.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button
+                className="modal-cancel"
+                onClick={() => setShowGroupDeleteModal(false)}
+              >
+                Cancel
+              </button>
+              <button className="modal-confirm delete" onClick={confirmGroupDelete}>
+                Delete All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {variantToDelete && (
+        <div className="modal-overlay variant-modal-overlay" style={{ zIndex: 3000 }} onClick={() => setVariantToDelete(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Delete Size Variant</h3>
+              <button className="modal-close" onClick={() => setVariantToDelete(null)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="modal-icon warning">
+                <span className="material-symbols-outlined">delete_forever</span>
+              </div>
+              <p className="modal-title">Delete {variantToDelete.size} Variant?</p>
+              <p className="modal-desc">
+                Are you sure you want to delete this specific size for <strong>{formData.name}</strong>?
+                This will permanently remove the variant from your catalog.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button
+                className="modal-cancel"
+                onClick={() => setVariantToDelete(null)}
+              >
+                Cancel
+              </button>
+              <button className="modal-confirm delete" onClick={confirmVariantDelete}>
+                Delete Variant
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ProductList;

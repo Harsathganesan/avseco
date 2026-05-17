@@ -1,0 +1,983 @@
+import React, { useState, useEffect } from 'react';
+import { useAppContext } from '../../context/AppContext.js';
+// import { useAuth } from '../../context/AuthContext.js';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
+import dayjs from 'dayjs';
+import './dailyprod.css?v=2.1';
+import Notification from '../../components/Notification.js';
+
+// Sizes will be derived dynamically below
+
+// ========== HELPER FUNCTIONS ==========
+const formatDate = (date) => {
+  if (!date) return '';
+  return date.format('DD-MM-YYYY');
+};
+
+const CalendarPicker = ({ selectedDate, onDateChange, onClose }) => (
+  <div className="calendar-wrapper">
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <DateCalendar
+        value={selectedDate}
+        onChange={(newDate) => {
+          onDateChange(newDate);
+          onClose();
+        }}
+      />
+    </LocalizationProvider>
+  </div>
+);
+
+const Production = () => {
+
+  // Mobile card expand state
+  // Mobile card expand state (removed unused showHistoryOnly)
+
+
+  // ========== STATE MANAGEMENT ==========
+  const [historySearch, setHistorySearch] = useState('');
+  const [historySizeFilter, setHistorySizeFilter] = useState('all');
+
+  // Master Date State
+  const [productionDate, setProductionDate] = useState(dayjs());
+  const [showProductionDatePicker, setShowProductionDatePicker] = useState(false);
+  const [showSummaryDatePicker, setShowSummaryDatePicker] = useState(false);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 7;
+
+  // Delete/Notification State
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [productionToDelete, setProductionToDelete] = useState(null);
+  const dateToClear = formatDate(productionDate);
+  const [openDropdown, setOpenDropdown] = useState(null); // 'product', 'size', 'operator' or null
+  const [showNotification, setShowNotification] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState('');
+  const [notificationType, setNotificationType] = useState('success');
+  const [editingId, setEditingId] = useState(null);
+  const [selectedRecord, setSelectedRecord] = useState(null); // Detail view state for mobile
+  const formRef = React.useRef(null);
+
+  const showNotificationMessage = React.useCallback((message, type = 'success') => {
+    setNotificationMessage(message);
+    setNotificationType(type);
+    setShowNotification(true);
+  }, []);
+
+  const {
+    productionHistory,
+    addProduction,
+    deleteProduction,
+    updateProduction,
+    clearAllProduction,
+    products: dbProducts,
+    employees,
+    productionTargets,
+    fetchTargets
+  } = useAppContext();
+  // const { isAdmin } = useAuth(); // Commented out as it's unused and causing build errors
+
+  // Production Entry Form State
+  
+  // Allow entry for dates starting from May 1st, 2026, but not future dates
+  const isFromMayFirst = productionDate.valueOf() >= dayjs('2026-05-01').startOf('day').valueOf();
+  const isNotFuture = productionDate.valueOf() <= dayjs().endOf('day').valueOf();
+  const canModify = isFromMayFirst && isNotFuture;
+  const [formData, setFormData] = useState({
+    product: "",
+    size: "",
+    quantity: "",
+    grade: "B",
+    operator: ""
+  });
+
+  // DYNAMIC OPERATORS FROM EMPLOYEES
+  const operators = React.useMemo(() => {
+    return (employees || [])
+      .filter(e => e.department === "Operator" || e.department === "Machine operator" || e.department === "Others")
+      .map(e => e.name);
+  }, [employees]);
+
+  // DERIVE DYNAMIC PRODUCTS FROM DATABASE
+  const productOptions = React.useMemo(() => {
+    if (!dbProducts || dbProducts.length === 0) return [];
+    const unique = {};
+    dbProducts.forEach(p => {
+      if (!unique[p.name]) unique[p.name] = { name: p.name, sizes: [] };
+      if (!unique[p.name].sizes.includes(p.size)) unique[p.name].sizes.push(p.size);
+    });
+
+    return Object.values(unique).map(p => ({
+      ...p,
+      sizes: p.sizes.sort((a, b) => {
+        const numA = parseInt(a) || 0;
+        const numB = parseInt(b) || 0;
+        return numA - numB;
+      })
+    }));
+  }, [dbProducts]);
+
+  // DERIVE DYNAMIC SIZES FOR SUMMARY & FILTERS
+  const availableSizes = React.useMemo(() => {
+    if (!dbProducts || dbProducts.length === 0) return ['6-inch', '8-inch', '10-inch', '12-inch'];
+    const sizesSet = new Set();
+    dbProducts.forEach(p => {
+      if (p.size) sizesSet.add(p.size);
+    });
+    return Array.from(sizesSet).sort((a, b) => {
+      const numA = parseInt(a) || 0;
+      const numB = parseInt(b) || 0;
+      return numA - numB;
+    });
+  }, [dbProducts]);
+
+  useEffect(() => {
+    if (fetchTargets) fetchTargets();
+  }, [fetchTargets]);
+
+
+  // Removed auto-selection to allow "Select Operator" placeholder to show
+  /*
+  useEffect(() => {
+    if (operators.length > 0 && !formData.operator) {
+      setFormData(prev => ({ ...prev, operator: operators[0] }));
+    }
+  }, [operators, formData.operator]);
+  */
+
+  useEffect(() => {
+    if (productOptions.length > 0 && !formData.product) {
+      const firstProd = productOptions[0];
+      setFormData(prev => ({
+        ...prev,
+        product: firstProd.name,
+        size: firstProd.sizes[0] || ""
+      }));
+    }
+  }, [productOptions, formData.product]);
+
+  const getSizesForProduct = React.useCallback(() => {
+    const product = productOptions.find(p =>
+      (p.name || "").toLowerCase().trim() === (formData.product || "").toLowerCase().trim()
+    );
+    return product ? product.sizes : [];
+  }, [productOptions, formData.product]);
+
+  const getSummaryData = () => {
+    const dailyRecords = (productionHistory || []).filter(item => {
+      if (item.date !== formatDate(productionDate)) return false;
+      // Filter by the currently selected product in the form
+      const isSelectedProduct = (item.product || "").toLowerCase().trim() === (formData.product || "").toLowerCase().trim();
+      const productActive = (dbProducts || []).some(p => p.name === item.product);
+      return isSelectedProduct && productActive;
+    });
+    const bySize = {};
+    const relevantSizes = getSizesForProduct();
+    relevantSizes.forEach(size => {
+      bySize[size] = dailyRecords
+        .filter(item => (item.size || "").toLowerCase().trim() === size.toLowerCase().trim())
+        .reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+    });
+
+    return {
+      total: dailyRecords.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0),
+      bySize: bySize,
+      sizes: relevantSizes
+    };
+  };
+
+  const summaryData = getSummaryData();
+
+  const productRef = React.useRef(null);
+  const sizeRef = React.useRef(null);
+  const quantityRef = React.useRef(null);
+  const operatorRef = React.useRef(null);
+
+  const inputRefs = React.useMemo(() => ({
+    product: productRef,
+    size: sizeRef,
+    quantity: quantityRef,
+    operator: operatorRef
+  }), []);
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      const isInput = e.target.tagName === 'INPUT' || (e.target.tagName === 'SELECT' && !e.target.classList.contains('custom-select-bypass'));
+      const key = e.key.toLowerCase();
+
+      if (!isInput) {
+        if (key === 'p') {
+          e.preventDefault();
+          setOpenDropdown(prev => prev === 'product' ? null : 'product');
+        }
+        if (key === 's') {
+          e.preventDefault();
+          setOpenDropdown(prev => prev === 'size' ? null : 'size');
+        }
+        if (key === 'q') {
+          e.preventDefault();
+          setOpenDropdown(null);
+          inputRefs.quantity.current?.focus();
+        }
+        if (key === 'm') {
+          e.preventDefault();
+          setOpenDropdown(prev => prev === 'operator' ? null : 'operator');
+        }
+
+        // NUMBER SHORTCUTS (1-9) for selecting items in an open dropdown
+        if (openDropdown && /^[1-9]$/.test(e.key)) {
+          e.preventDefault();
+          const index = parseInt(e.key) - 1;
+          let options = [];
+          let name = "";
+
+          if (openDropdown === 'product') { options = productOptions.map(p => p.name); name = 'product'; }
+          if (openDropdown === 'size') { options = getSizesForProduct(); name = 'size'; }
+          if (openDropdown === 'operator') { options = operators; name = 'operator'; }
+
+          if (options[index]) {
+            handleInputChange({ target: { name, value: options[index] } });
+          }
+        }
+      }
+
+      if (e.key === 'Escape') {
+        setOpenDropdown(null);
+      }
+
+      if (e.key === 'Enter' && e.shiftKey) {
+        e.preventDefault();
+        handleAddProduction();
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData, openDropdown, productOptions, operators, getSizesForProduct]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.premium-form-group')) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleInputChange = React.useCallback((e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+
+    // AUTOMATIC PROGRESSION
+    if (name === 'product') {
+      setOpenDropdown('size');
+    } else if (name === 'size') {
+      setOpenDropdown(null);
+      setTimeout(() => inputRefs.quantity.current?.focus(), 50);
+    } else if (name === 'operator') {
+      setOpenDropdown(null);
+      if (document.activeElement) document.activeElement.blur();
+    }
+  }, [inputRefs.quantity]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (e.target.name === 'quantity') {
+        handleAddProduction();
+      }
+    }
+  };
+
+  const handleAddProduction = React.useCallback(async () => {
+    // FORM VALIDATION
+    if (!formData.product) {
+      showNotificationMessage("⚠️ Please select a Product first (Press P)", 'error');
+      setOpenDropdown('product');
+      return;
+    }
+    if (!formData.size) {
+      showNotificationMessage("⚠️ Please select a Size first (Press S)", 'error');
+      setOpenDropdown('size');
+      return;
+    }
+    if (!formData.quantity || parseInt(formData.quantity) <= 0) {
+      showNotificationMessage("⚠️ Please enter a valid Quantity (Press Q)", 'error');
+      inputRefs.quantity.current?.focus();
+      return;
+    }
+    if (!formData.operator) {
+      showNotificationMessage("⚠️ Please select a Machine Operator (Press M)", 'error');
+      setOpenDropdown('operator');
+      return;
+    }
+
+    const quantity = parseInt(formData.quantity);
+    const timeString = dayjs().format('hh:mm A');
+
+    const entryData = {
+      date: formatDate(productionDate),
+      product: formData.product,
+      size: formData.size,
+      quantity: quantity,
+      grade: formData.grade,
+      operator: formData.operator,
+      time: timeString,
+      status: "completed"
+    };
+
+    try {
+      if (editingId) {
+        await updateProduction(editingId, entryData);
+        showNotificationMessage("Product Updated Successfully", 'success');
+        setEditingId(null);
+      } else {
+        await addProduction(entryData);
+        showNotificationMessage("Product Added Successfully", 'success');
+      }
+
+      // Auto-reset
+      setFormData(prev => ({ ...prev, quantity: "" }));
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    } catch (err) {
+      showNotificationMessage(`❌ Failed to ${editingId ? 'update' : 'add'} production`, "error");
+    }
+  }, [formData, productionDate, showNotificationMessage, addProduction, updateProduction, editingId, inputRefs.quantity]);
+
+  const getSizeTargetInfo = (size) => {
+    if (!productionTargets || !formData.product || !size) return null;
+    let target = productionTargets.find(t =>
+      (t.operator === formData.operator) &&
+      (t.productName === formData.product || t.product === formData.product) &&
+      (t.productSize === size || t.size === size)
+    );
+    if (!target) {
+      target = productionTargets.find(t =>
+        (t.productName === formData.product || t.product === formData.product) &&
+        (t.productSize === size || t.size === size)
+      );
+    }
+    if (!target) return null;
+    const remaining = Math.max(0, target.targetQty - (target.producedQty || 0));
+    return {
+      targetQty: target.targetQty,
+      producedQty: target.producedQty || 0,
+      remaining: remaining,
+      isCompleted: (target.producedQty || 0) >= target.targetQty
+    };
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.date-picker-wrapper-v2')) {
+        setShowProductionDatePicker(false);
+        setShowSummaryDatePicker(false);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  const getFilteredHistory = () => {
+    let list = (productionHistory || []).filter(item => {
+      if (item.date !== formatDate(productionDate)) return false;
+
+      const productActive = (dbProducts || []).some(p => p.name === item.product);
+      if (!productActive) return false;
+
+      const matchesSearch = !historySearch.trim() ||
+        (item.product?.toLowerCase() || "").includes(historySearch.toLowerCase()) ||
+        (item.operator?.toLowerCase() || "").includes(historySearch.toLowerCase());
+      const matchesSize = historySizeFilter === 'all' || item.size === historySizeFilter;
+      return matchesSearch && matchesSize;
+    });
+
+    return list.sort((a, b) => {
+      const dtA = dayjs(`${a.date} ${a.time}`, 'DD-MM-YYYY hh:mm A').unix();
+      const dtB = dayjs(`${b.date} ${b.time}`, 'DD-MM-YYYY hh:mm A').unix();
+      return dtB - dtA;
+    });
+  };
+
+  const allFilteredItems = getFilteredHistory();
+  const totalPages = Math.ceil(allFilteredItems.length / itemsPerPage);
+  const paginatedHistory = allFilteredItems.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  /*
+  const handleSendReminder = async (size, produced, target) => {
+    try {
+      await notificationApi.sendPush({
+        title: "Production Status",
+        message: `Target status for ${size}: ${produced.toLocaleString()} / ${target.toLocaleString()} plates produced. Please ensure targets are met.`,
+        targetAudience: "All Employees"
+      });
+      showNotificationMessage("Operators notified successfully!");
+    } catch (err) {
+      showNotificationMessage("Failed to send notification", "error");
+    }
+  };
+  */
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [productionDate, historySearch, historySizeFilter]);
+
+  const handleEditProduction = (record) => {
+    if (!canModify) return;
+    setEditingId(record.id || record._id);
+    setFormData({
+      product: record.product,
+      size: record.size,
+      quantity: record.quantity,
+      grade: record.grade || 'A',
+      operator: record.operator
+    });
+
+    // Auto-scroll to form on mobile
+    if (window.innerWidth <= 768) {
+      setTimeout(() => {
+        formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+  };
+
+  const handleDeleteProduction = (record) => {
+    setProductionToDelete(record);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteProduction = async () => {
+    if (productionToDelete) {
+      try {
+        const id = productionToDelete.id || productionToDelete._id;
+        await deleteProduction(id);
+        showNotificationMessage("Product Deleted", 'error');
+        setShowDeleteConfirm(false);
+        setProductionToDelete(null);
+      } catch (err) {
+        showNotificationMessage("❌ Failed to delete record", "error");
+      }
+    }
+  };
+
+  return (
+    <div className="daily-production-page">
+      <Notification
+        show={showNotification}
+        message={notificationMessage}
+        type={notificationType}
+        onClose={() => setShowNotification(false)}
+      />
+      <div className="page-header premium-header">
+        <div className="header-left">
+          <h1 className="page-title">Daily Production</h1>
+        </div>
+      </div>
+
+      <div className="dashboard-content-main">
+        <div className="production-main-grid">
+          <div className="production-form-section" ref={formRef}>
+            <div className={`premium-entry-card ${editingId ? 'edit-mode-active' : ''}`}>
+              <div className={`card-header entry-header ${editingId ? 'edit-mode-header' : ''}`}>
+                <h3>
+                  <span className="material-symbols-outlined">{editingId ? 'edit_note' : 'add_circle'}</span>
+                  {editingId ? "Update Production Entry" : "New Production Entry"}
+                </h3>
+                {editingId && (
+                  <button className="cancel-edit-btn" onClick={() => { setEditingId(null); setFormData({ product: '', size: '', quantity: '', grade: 'A', operator: '' }); }}>
+                    <span className="material-symbols-outlined">close</span> CANCEL
+                  </button>
+                )}
+              </div>
+              <div className="card-body">
+                <div className="entry-form-premium">
+                  <div className="premium-form-row four-cols">
+                    <div className="premium-form-group">
+                      <label className="premium-label-new">Production Date</label>
+                      <div className="date-picker-wrapper-new date-picker-wrapper-v2">
+                        <span className="material-symbols-outlined input-icon-new">
+                          calendar_month
+                        </span>
+                        <button
+                          className="premium-date-btn-new"
+                          onClick={() => setShowProductionDatePicker(!showProductionDatePicker)}
+                        >
+                          {formatDate(productionDate)}
+                        </button>
+                        {showProductionDatePicker && (
+                          <div className="date-dropdown mui-calendar-dropdown left">
+                            <CalendarPicker
+                              selectedDate={productionDate}
+                              onDateChange={(date) => {
+                                setProductionDate(date);
+                                setShowProductionDatePicker(false);
+                              }}
+                              onClose={() => setShowProductionDatePicker(false)}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="premium-form-group">
+                      <label className="premium-label-new">Product Type </label>
+                      <div className={`custom-dropdown-premium ${openDropdown === 'product' ? 'active' : ''}`}>
+                        <div
+                          className="custom-dropdown-toggle"
+                          onClick={() => setOpenDropdown(prev => prev === 'product' ? null : 'product')}
+                        >
+                          <span className="material-symbols-outlined dropdown-icon">category</span>
+                          <span className="dropdown-selected-text">{formData.product || "Select Product"}</span>
+                          <span className="material-symbols-outlined arrow-icon">
+                            {openDropdown === 'product' ? 'arrow_drop_up' : 'arrow_drop_down'}
+                          </span>
+                        </div>
+                        {openDropdown === 'product' && (
+                          <div className="custom-dropdown-menu">
+                            {productOptions.map((p, idx) => (
+                              <div
+                                key={p.name}
+                                className={`custom-dropdown-item ${formData.product === p.name ? 'active' : ''}`}
+                                onClick={() => handleInputChange({ target: { name: 'product', value: p.name } })}
+                              >
+                                <span className="item-index">{idx + 1}</span>
+                                <span className="item-text">{p.name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="premium-form-group">
+                      <label className="premium-label-new">Size </label>
+                      <div className={`custom-dropdown-premium ${openDropdown === 'size' ? 'active' : ''}`}>
+                        <div
+                          className="custom-dropdown-toggle"
+                          onClick={() => setOpenDropdown(prev => prev === 'size' ? null : 'size')}
+                        >
+                          <span className="material-symbols-outlined dropdown-icon">straighten</span>
+                          <span className="dropdown-selected-text">{formData.size || "Select Size"}</span>
+                          <span className="material-symbols-outlined arrow-icon">
+                            {openDropdown === 'size' ? 'arrow_drop_up' : 'arrow_drop_down'}
+                          </span>
+                        </div>
+                        {openDropdown === 'size' && (
+                          <div className="custom-dropdown-menu">
+                            {getSizesForProduct()
+                              .sort((a, b) => (parseInt(a) || 0) - (parseInt(b) || 0))
+                              .map((s, idx) => {
+                                const info = getSizeTargetInfo(s);
+                                let statusClass = info?.remaining <= 0 ? 'completed' : (info?.producedQty > 0 ? 'partial' : 'pending');
+                                return (
+                                  <div
+                                    key={s}
+                                    className={`custom-dropdown-item ${formData.size === s ? 'active' : ''} ${statusClass}`}
+                                    onClick={() => handleInputChange({ target: { name: 'size', value: s } })}
+                                  >
+                                    <span className="item-index">{idx + 1}</span>
+                                    <span className="item-text">{s}</span>
+                                  </div>
+                                );
+                              })
+                            }
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="premium-form-group">
+                      <label className="premium-label-new">Quantity (PCS) </label>
+                      <div className="input-wrapper-new">
+                        <span className="material-symbols-outlined input-icon-new">production_quantity_limits</span>
+                        <input
+                          type="number"
+                          name="quantity"
+                          ref={inputRefs.quantity}
+                          value={formData.quantity}
+                          onChange={handleInputChange}
+                          onKeyDown={handleKeyDown}
+                          className="premium-input-new"
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="super-action-row-new">
+                    <div className="premium-form-group grade-group-new">
+                      <label className="premium-label-new">Quality Grade Selection (A/B/C)</label>
+                      <div className="grade-selector-new three-options">
+                        <label className={`grade-option-new ${formData.grade === 'A' ? 'active' : ''}`}>
+                          <input type="radio" name="grade" value="A" checked={formData.grade === 'A'} onChange={handleInputChange} />
+                          <span>Grade A</span>
+                        </label>
+                        <label className={`grade-option-new ${formData.grade === 'B' ? 'active' : ''}`}>
+                          <input type="radio" name="grade" value="B" checked={formData.grade === 'B'} onChange={handleInputChange} />
+                          <span>Grade B</span>
+                        </label>
+                        <label className={`grade-option-new ${formData.grade === 'C' ? 'active' : ''}`}>
+                          <input type="radio" name="grade" value="C" checked={formData.grade === 'C'} onChange={handleInputChange} />
+                          <span>Grade C</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="premium-form-group operator-group-new">
+                      <label className="premium-label-new">Machine Operator </label>
+                      <div className={`custom-dropdown-premium ${openDropdown === 'operator' ? 'active' : ''}`}>
+                        <div
+                          className="custom-dropdown-toggle"
+                          onClick={() => setOpenDropdown(prev => prev === 'operator' ? null : 'operator')}
+                        >
+                          <span className="material-symbols-outlined dropdown-icon">person</span>
+                          <span className="dropdown-selected-text">{formData.operator || "Select Operator"}</span>
+                          {formData.operator && (
+                            <span
+                              className="material-symbols-outlined clear-selection-btn"
+                              onClick={(e) => { e.stopPropagation(); setFormData(prev => ({ ...prev, operator: "" })); }}
+                            >
+                              close
+                            </span>
+                          )}
+                          <span className="material-symbols-outlined arrow-icon">
+                            {openDropdown === 'operator' ? 'arrow_drop_up' : 'arrow_drop_down'}
+                          </span>
+                        </div>
+                        {openDropdown === 'operator' && (
+                          <div className="custom-dropdown-menu">
+                            {operators.map((o, idx) => (
+                              <div
+                                key={o}
+                                className={`custom-dropdown-item ${formData.operator === o ? 'active' : ''}`}
+                                onClick={() => handleInputChange({ target: { name: 'operator', value: o } })}
+                              >
+                                <span className="item-index">{idx + 1}</span>
+                                <span className="item-text">{o}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="submit-action-group-new">
+                      <label className="premium-label-new">&nbsp;</label>
+                      <button
+                        className={`premium-submit-btn-new super-action-btn ${!canModify ? 'locked' : ''}`}
+                        onClick={canModify ? handleAddProduction : null}
+                        disabled={!canModify}
+                      >
+                        <div className="btn-content-new">
+                          <span>{canModify ? 'SUBMIT' : 'LOCKED'}</span>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="production-summary-section">
+            <div className="premium-card">
+              <div className="card-header summary-header">
+                <div className="header-left-title">
+                  <h3><span className="material-symbols-outlined">analytics</span> Daily Summary</h3>
+                </div>
+                <div className="summary-header-actions">
+                  <div className="summary-total-mini-badge">
+                    <span className="mini-label">TOTAL:</span>
+                    <span className="mini-value">{(summaryData.total || 0).toLocaleString()}</span>
+                  </div>
+                  <div className="date-picker-wrapper-v2">
+                    <button
+                      className="summary-date-btn-compact"
+                      onClick={() => setShowSummaryDatePicker(!showSummaryDatePicker)}
+                    >
+                      <span className="material-symbols-outlined">calendar_today</span>
+                      <span className="date-text">{formatDate(productionDate)}</span>
+                      <span className="material-symbols-outlined arrow">expand_more</span>
+                    </button>
+                    {showSummaryDatePicker && (
+                      <div className="date-dropdown mui-calendar-dropdown right">
+                        <CalendarPicker
+                          selectedDate={productionDate}
+                          onDateChange={(date) => {
+                            setProductionDate(date);
+                            setShowSummaryDatePicker(false);
+                          }}
+                          onClose={() => setShowSummaryDatePicker(false)}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="card-body">
+                <div className="dashboard-grid-mini-new">
+                  {(summaryData.sizes || []).map(size => {
+                    const quantity = summaryData.bySize[size] || 0;
+
+                    // Find combined target for this size on the current date
+                    const relevantTargets = (productionTargets || []).filter(t =>
+                      (t.date === formatDate(productionDate)) &&
+                      (t.productName === formData.product || t.product === formData.product) &&
+                      (t.productSize === size || t.size === size)
+                    );
+
+                    const totalTgt = relevantTargets.reduce((sum, t) => sum + (Number(t.targetQty) || 0), 0);
+                    const totalProducedTillNow = relevantTargets.reduce((sum, t) => sum + (Number(t.producedQty) || 0), 0);
+                    const progress = totalTgt > 0 ? Math.min(100, (totalProducedTillNow / totalTgt) * 100) : 0;
+
+                    return (
+                      <div key={size} className="summary-stat-card-new">
+                        <div className="stat-header-new">
+                          <span className="size-pill">{size}</span>
+                        </div>
+
+                        <div className="stat-value-badge-new">
+                          {quantity.toLocaleString()} <span className="qty-unit">plates</span>
+                        </div>
+
+                        {totalTgt > 0 && (
+                          <>
+                            <div className="stat-progress-bar-new">
+                              <div
+                                className="progress-bar-fill"
+                                style={{ width: `${progress}%` }}
+                              ></div>
+                            </div>
+                            <div className="stat-target-info-new">
+                              Target: {totalProducedTillNow.toLocaleString()} / {totalTgt.toLocaleString()}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="history-full-view">
+        <div className="history-section">
+          <div className="premium-card">
+            <div className="card-header table-header">
+              <h3>
+                <span className="material-symbols-outlined">history</span>
+                Production History
+                <div className="table-actions kutty-filter">
+                  <select
+                    className="custom-select-premium"
+                    value={historySizeFilter}
+                    onChange={(e) => setHistorySizeFilter(e.target.value)}
+                  >
+                    <option value="all">All Sizes</option>
+                    {availableSizes.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+              </h3>
+
+              <div className="table-search-desktop-only">
+                <div className="search-box">
+                  <span className="material-symbols-outlined search-icon">search</span>
+                  <input
+                    type="text"
+                    placeholder="Search history..."
+                    value={historySearch}
+                    onChange={(e) => setHistorySearch(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="daily-table-wrapper">
+              <table className="premium-table">
+                <thead>
+                  <tr>
+                    <th>S.NO</th>
+                    <th>TIME</th>
+                    <th>OPERATOR</th>
+                    <th>PRODUCT</th>
+                    <th>SIZE (QTY)</th>
+                    <th>GRADE</th>
+                    <th>ACTION</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedHistory.map((record, idx) => (
+                    <tr
+                      key={record.id || record._id || idx}
+                      className="daily-row-premium"
+                    >
+                      <td className="col-sno">{((currentPage - 1) * itemsPerPage) + idx + 1}</td>
+                      <td className="col-time">{record.time}</td>
+                      <td className="col-operator">{record.operator}</td>
+                      <td className="col-product">{record.product}</td>
+                      <td className="col-size-qty">
+                        <span className="mobile-only-label">Size: </span>{record.size}
+                        <span className="mobile-only-label"> | Qty: </span> {record.quantity}
+                      </td>
+                      <td className="col-grade">{record.grade}</td>
+                      <td className="col-actions">
+                        <div style={{ opacity: canModify ? 1 : 0.4, display: 'flex', gap: '8px' }}>
+                          <button onClick={canModify ? () => handleEditProduction(record) : null} disabled={!canModify} className="btn-edit-premium">
+                            <span className="material-symbols-outlined">{canModify ? 'edit' : 'lock'}</span>
+                          </button>
+                          <button onClick={canModify ? () => handleDeleteProduction(record) : null} disabled={!canModify} className="btn-delete">
+                            <span className="material-symbols-outlined">{canModify ? 'delete' : 'lock'}</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {totalPages > 1 && (
+              <div className="table-pagination-premium">
+                <button className="page-btn" disabled={currentPage === 1} onClick={() => setCurrentPage(prev => prev - 1)}>
+                  <span className="material-symbols-outlined">navigate_before</span>
+                  Prev
+                </button>
+                <div className="page-info">
+                  <span>Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong></span>
+                </div>
+                <button className="page-btn" disabled={currentPage === totalPages} onClick={() => setCurrentPage(prev => prev + 1)}>
+                  Next
+                  <span className="material-symbols-outlined">navigate_next</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {showDeleteConfirm && productionToDelete && (
+        <div className="modal-overlay" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Confirm Deletion</h3>
+              <button className="modal-close" onClick={() => setShowDeleteConfirm(false)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="modal-icon warning">
+                <span className="material-symbols-outlined">warning</span>
+              </div>
+              <p className="modal-title">Delete this record?</p>
+              <p className="modal-desc">
+                You are about to delete the entry for <strong>{productionToDelete.size} {productionToDelete.product}</strong>. This cannot be undone.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button className="modal-cancel" onClick={() => setShowDeleteConfirm(false)}>Cancel</button>
+              <button className="modal-confirm delete" onClick={confirmDeleteProduction}>Delete Record</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showClearConfirm && (
+        <div className="modal-overlay" onClick={() => setShowClearConfirm(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Clear Daily Records</h3>
+              <button className="modal-close" onClick={() => setShowClearConfirm(false)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="modal-icon warning">
+                <span className="material-symbols-outlined">delete_sweep</span>
+              </div>
+              <p className="modal-title">Clear All Records?</p>
+              <p className="modal-desc">
+                Are you sure you want to clear <strong>ALL</strong> production records for <strong>{dateToClear}</strong>?
+                This will permanently delete today's progress.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button className="modal-cancel" onClick={() => setShowClearConfirm(false)}>Cancel</button>
+              <button className="modal-confirm delete" onClick={async () => {
+                try {
+                  await clearAllProduction(dateToClear);
+                  showNotificationMessage(`✅ Production cleared for ${dateToClear}.`);
+                  setShowClearConfirm(false);
+                } catch (err) {
+                  showNotificationMessage("❌ Failed to clear.", "error");
+                }
+              }}>Clear All</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
+      {/* MOBILE DETAIL MODAL */}
+      {selectedRecord && (
+        <div className="modal-overlay" onClick={() => setSelectedRecord(null)}>
+          <div className="modal-content production-detail-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header detail-header-premium">
+              <h3>
+                <span className="material-symbols-outlined">description</span>
+                Production Details
+              </h3>
+              <button className="modal-close" onClick={() => setSelectedRecord(null)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="modal-body detail-body-premium">
+              <div className="detail-hero-section">
+                <div className="hero-product-badge">{selectedRecord.product}</div>
+                <div className="hero-qty-badge">{selectedRecord.quantity} <span>PCS</span></div>
+              </div>
+
+              <div className="detail-info-grid">
+                <div className="detail-info-item">
+                  <span className="item-label">Size</span>
+                  <span className="item-value">{selectedRecord.size}</span>
+                </div>
+                <div className="detail-info-item">
+                  <span className="item-label">Operator</span>
+                  <span className="item-value">{selectedRecord.operator}</span>
+                </div>
+                <div className="detail-info-item">
+                  <span className="item-label">Grade</span>
+                  <span className="item-value">{selectedRecord.grade}</span>
+                </div>
+                <div className="detail-info-item">
+                  <span className="item-label">Time</span>
+                  <span className="item-value">{selectedRecord.time}</span>
+                </div>
+                <div className="detail-info-item">
+                  <span className="item-label">Date</span>
+                  <span className="item-value">{selectedRecord.date}</span>
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer detail-footer-premium">
+              <button className="detail-close-btn" onClick={() => setSelectedRecord(null)}>CLOSE VIEW</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+};
+
+export default Production;
